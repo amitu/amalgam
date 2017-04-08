@@ -3,9 +3,8 @@ package db
 import (
 	"context"
 
-	"acko"
-	"acko/django"
-
+	amalgam "github.com/amitu/amalgam"
+	"github.com/amitu/amalgam/django"
 	"github.com/juju/errors"
 )
 
@@ -40,7 +39,7 @@ func (g *group) Permissions(ctx context.Context) ([]django.Permission, error) {
 			group_id = $1
 	`
 
-	err := acko.QueryIntoSlice(ctx, &perms, q, g.DId)
+	err := amalgam.QueryIntoSlice(ctx, &perms, q, g.DId)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -120,7 +119,7 @@ func (u *user) HasRole(ctx context.Context, roleId int64) (bool, error) {
 			user_id = $1 AND
 			group_id = $2
 	`
-	num, err := acko.QueryIntoInt(ctx, q, u.DID, roleId)
+	num, err := amalgam.QueryIntoInt(ctx, q, u.DID, roleId)
 	if err != nil {
 		return false, errors.Trace(err)
 	}
@@ -168,7 +167,7 @@ type astore struct {
 
 func (s *astore) Groups(ctx context.Context) ([]django.Group, error) {
 	groups := []*group{}
-	err := acko.QueryIntoSlice(ctx, &groups, "SELECT * FROM auth_group")
+	err := amalgam.QueryIntoSlice(ctx, &groups, "SELECT * FROM auth_group")
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -183,7 +182,7 @@ func (s *astore) Groups(ctx context.Context) ([]django.Group, error) {
 
 func (s *astore) GroupByID(ctx context.Context, id int64) (django.Group, error) {
 	group := group{}
-	err := acko.QueryIntoStruct(
+	err := amalgam.QueryIntoStruct(
 		ctx, &group, "SELECT * FROM auth_group WHERE id = $1", id,
 	)
 	if err != nil {
@@ -197,7 +196,7 @@ func (s *astore) GroupByName(
 	ctx context.Context, name string,
 ) (django.Group, error) {
 	group := group{}
-	err := acko.QueryIntoStruct(
+	err := amalgam.QueryIntoStruct(
 		ctx, &group, `SELECT * FROM auth_group WHERE name = $1`, name,
 	)
 	if err != nil {
@@ -209,7 +208,7 @@ func (s *astore) GroupByName(
 
 func (s *astore) UserByID(ctx context.Context, id int64) (django.User, error) {
 	u := &user{}
-	err := acko.QueryIntoStruct(
+	err := amalgam.QueryIntoStruct(
 		ctx, u, `
 			SELECT
 				id, username, first_name, last_name
@@ -245,7 +244,7 @@ func (s *astore) Permissions(ctx context.Context) ([]django.Permission, error) {
 
 func (s *astore) PermissionByID(ctx context.Context, id int64) (django.Permission, error) {
 	perm := permission{}
-	err := acko.QueryIntoStruct(
+	err := amalgam.QueryIntoStruct(
 		ctx, &permission{}, "select * from auth_permission where id = $1", id,
 	)
 	if err != nil {
@@ -259,7 +258,7 @@ func (s *astore) PermissionByCode(
 	ctx context.Context, code string,
 ) (django.Permission, error) {
 	perm := permission{}
-	err := acko.QueryIntoStruct(
+	err := amalgam.QueryIntoStruct(
 		ctx, &permission{}, "select * from auth_permission where codename = $1", code,
 	)
 	if err != nil {
@@ -270,24 +269,24 @@ func (s *astore) PermissionByCode(
 }
 
 func NewAuthStore(ctx context.Context) (django.AuthStore, error) {
-	gcount, err := acko.QueryIntoInt(ctx, "SELECT count(*) FROM auth_group")
+	gcount, err := amalgam.QueryIntoInt(ctx, "SELECT count(*) FROM auth_group")
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 
-	pcount, err := acko.QueryIntoInt(
+	pcount, err := amalgam.QueryIntoInt(
 		ctx, "SELECT count(*) FROM auth_permission",
 	)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 
-	ucount, err := acko.QueryIntoInt(ctx, "SELECT count(*) FROM auth_user")
+	ucount, err := amalgam.QueryIntoInt(ctx, "SELECT count(*) FROM auth_user")
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 
-	acko.LOGGER.Debug(
+	amalgam.LOGGER.Debug(
 		"found_auth_tables", "groups", gcount,
 		"permissions", pcount, "users", ucount,
 	)

@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"acko"
-	"acko/django"
-
+	amalgam "github.com/amitu/amalgam"
+	"github.com/amitu/amalgam/django"
 	"github.com/inconshreveable/log15"
 	"github.com/juju/errors"
 )
@@ -22,7 +21,7 @@ var (
 )
 
 func (s *shttp) GetSession(ctx context.Context) (django.Session, error) {
-	sessionid, err := acko.Ctx2SessionKey(ctx)
+	sessionid, err := amalgam.Ctx2SessionKey(ctx)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -92,7 +91,7 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w2 := &CodeWriter{200, w}
 
 	start := time.Now()
-	logger := acko.LOGGER.New(
+	logger := amalgam.LOGGER.New(
 		"url", r.RequestURI, "method", r.Method, "ip", clientIP,
 	)
 	logger.Debug("http_started")
@@ -101,9 +100,9 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"code", log15.Lazy{func() interface{} { return w2.code }},
 	)
 
-	db, err := acko.Ctx2Db(s.ctx)
+	db, err := amalgam.Ctx2Db(s.ctx)
 	if err != nil {
-		acko.LOGGER.Crit(
+		amalgam.LOGGER.Crit(
 			"failed_to_get_db", "err", errors.ErrorStack(err),
 		)
 		http.Error(w, http.StatusText(500), 500)
@@ -112,15 +111,15 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	tx, err := db.Beginx()
 	if err != nil {
-		acko.LOGGER.Crit(
+		amalgam.LOGGER.Crit(
 			"failed_to_create_transaction", "err", errors.ErrorStack(err),
 		)
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}
 
-	ctx := context.WithValue(r.Context(), acko.KeyDBTransaction, tx)
-	ctx = context.WithValue(ctx, acko.KeyDB, db)
+	ctx := context.WithValue(r.Context(), amalgam.KeyDBTransaction, tx)
+	ctx = context.WithValue(ctx, amalgam.KeyDB, db)
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -171,7 +170,7 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ctx = context.WithValue(ctx, acko.KeySession, sessionid.Value)
+	ctx = context.WithValue(ctx, amalgam.KeySession, sessionid.Value)
 	s.mux.ServeHTTP(w2, r.WithContext(ctx))
 
 	if w2.code < 400 {

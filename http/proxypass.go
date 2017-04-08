@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"acko"
+	amalgam "github.com/amitu/amalgam"
 )
 
 func (s *shttp) ProxyPass(pth, dst string) {
@@ -15,5 +15,5 @@ func (s *shttp) ProxyPass(pth, dst string) {
 	}
 
 	s.mux.Handle(pth, &httputil.ReverseProxy{Director: director})
-	acko.LOGGER.Debug("registered_proxypass", "path", pth, "remote", dst)
+	amalgam.LOGGER.Debug("registered_proxypass", "path", pth, "remote", dst)
 }

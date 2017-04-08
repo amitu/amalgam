@@ -5,8 +5,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	"acko/django"
-
+	"github.com/amitu/amalgam/django"
 	"github.com/juju/errors"
 )
 
