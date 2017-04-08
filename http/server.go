@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"acko/django"
-
-	"acko"
-
+	"github.com/amitu/amalgam/django"
+	amalgam "github.com/amitu/amalgam"
 	"github.com/juju/errors"
 )
 
@@ -39,7 +37,7 @@ func (s *shttp) Redirect(w http.ResponseWriter, r *http.Request, url string, cod
 }
 
 func (s *shttp) Register(pattern string, fn http.HandlerFunc) {
-	acko.LOGGER.Debug("registering pattern", "pattern", pattern)
+	amalgam.LOGGER.Debug("registering pattern", "pattern", pattern)
 	s.mux.HandleFunc(pattern, fn)
 }
 
@@ -53,7 +51,7 @@ func (s *shttp) Reject(w http.ResponseWriter, reason string) {
 
 	j, err := json.MarshalIndent(&EResult{Error: reason}, "", "    ")
 	if err != nil {
-		acko.LOGGER.Error(
+		amalgam.LOGGER.Error(
 			"reject_json_failed", "err", errors.ErrorStack(err),
 		)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -67,7 +65,7 @@ func (s *shttp) Respond(w http.ResponseWriter, result interface{}) {
 
 	j, err := json.MarshalIndent(&EResult{Result: result}, "", "    ")
 	if err != nil {
-		acko.LOGGER.Error(
+		amalgam.LOGGER.Error(
 			"respond_json_failed", "err", errors.ErrorStack(err),
 		)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

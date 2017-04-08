@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"acko/django"
+	"github.com/amitu/amalgam/django"
 )
 
 type HTTPService interface {

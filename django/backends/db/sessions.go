@@ -12,9 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"acko"
-	"acko/django"
-
+	amalgam "github.com/amitu/amalgam"
+	"github.com/amitu/amalgam/django"
 	"github.com/juju/errors"
 )
 
@@ -32,14 +31,14 @@ var (
 func NewSessionStore(
 	ctx context.Context, secret string, auth django.AuthStore,
 ) (django.SessionStore, error) {
-	count, err := acko.QueryIntoInt(
+	count, err := amalgam.QueryIntoInt(
 		ctx, "SELECT count(*) FROM django_session",
 	)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 
-	acko.LOGGER.Debug("found_session_table", "count", count)
+	amalgam.LOGGER.Debug("found_session_table", "count", count)
 	return &store{secret: secret, auth: auth}, nil
 }
 
@@ -56,7 +55,7 @@ func (s *store) GetSessionBySessionKey(
 	ss.dDataCache = make(map[string]json.RawMessage)
 	ss.DSessionKey = id
 
-	err := acko.QueryIntoStruct(
+	err := amalgam.QueryIntoStruct(
 		ctx, &ss, `SELECT * FROM django_session WHERE session_key = $1`, id,
 	)
 	if err != nil {
@@ -68,7 +67,7 @@ func (s *store) GetSessionBySessionKey(
 }
 
 func (s *store) CreateSession(ctx context.Context) (django.Session, error) {
-	session_key := acko.GetRandomString(32)
+	session_key := amalgam.GetRandomString(32)
 	expire_date := time.Now().Add(time.Hour * 24 * 3600)
 
 	ss := session{}
@@ -82,13 +81,13 @@ func (s *store) CreateSession(ctx context.Context) (django.Session, error) {
 		return nil, errors.Trace(err)
 	}
 
-	acko.LOGGER.Debug("Session Saved: ", ss.SessionKey())
+	amalgam.LOGGER.Debug("Session Saved: ", ss.SessionKey())
 
 	return &ss, nil
 }
 
 func (s *store) DestroySession(ctx context.Context, id string) error {
-	tx, err := acko.Ctx2Tx(ctx)
+	tx, err := amalgam.Ctx2Tx(ctx)
 	if err != nil {
 		return errors.Trace(err)
 	}
@@ -168,7 +167,7 @@ func (s *session) SetValue(
 	if err != nil {
 		return errors.Trace(err)
 	}
-	acko.LOGGER.Debug("session_set_value", "value", svalue)
+	amalgam.LOGGER.Debug("session_set_value", "value", svalue)
 	if s.dDataCache == nil {
 		s.dDataCache = make(map[string]json.RawMessage)
 	}
@@ -285,7 +284,7 @@ func (s *session) Save(ctx context.Context, i bool) error {
 		return errors.Trace(err)
 	}
 
-	tx, err := acko.Ctx2Tx(ctx)
+	tx, err := amalgam.Ctx2Tx(ctx)
 	if err != nil {
 		return errors.Trace(err)
 	}
@@ -304,7 +303,7 @@ func (s *session) Save(ctx context.Context, i bool) error {
 	}
 
 	if num == 0 {
-		acko.LOGGER.Debug("db_insert_session", "sessionkey", s.DSessionKey)
+		amalgam.LOGGER.Debug("db_insert_session", "sessionkey", s.DSessionKey)
 		_, err = tx.Exec(insert_query, s.DExpireDate, s.DData, s.DSessionKey)
 		if err != nil {
 			return errors.Trace(err)

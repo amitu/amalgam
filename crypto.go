@@ -1,4 +1,4 @@
-package acko
+package amalgam
 
 import (
 	"math/rand"

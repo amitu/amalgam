@@ -4,8 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"acko"
-
+	amalgam "github.com/amitu/amalgam"
 	"github.com/juju/errors"
 )
 
@@ -37,7 +36,7 @@ func (f *fakeSessionStore) GetSessionBySessionKey(
 
 func (f *fakeSessionStore) CreateSession(_ context.Context) (Session, error) {
 	ss := session{}
-	ss.id = acko.GetRandomString(32)
+	ss.id = amalgam.GetRandomString(32)
 	ss.store = f
 	ss.values = make(map[string]json.RawMessage)
 

@@ -1,2 +1,2 @@
 # tango
-golang library to interoperate with django.
+golang library to interoperate with django
