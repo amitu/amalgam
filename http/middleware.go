@@ -1,0 +1,198 @@
+package http
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"acko"
+	"acko/django"
+
+	"github.com/inconshreveable/log15"
+	"github.com/juju/errors"
+)
+
+var (
+	ErrNoSession              = errors.New("no session in request")
+	ErrBadSession             = errors.New("bad session")
+	ErrSessionItemIsNotString = errors.New("session item is not string")
+)
+
+func (s *shttp) GetSession(ctx context.Context) (django.Session, error) {
+	sessionid, err := acko.Ctx2SessionKey(ctx)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	return s.sessions.GetSessionBySessionKey(ctx, sessionid)
+}
+
+func (s *shttp) SetSession(
+	ctx context.Context, key string, value interface{},
+) error {
+	session, err := s.GetSession(ctx)
+	if err != nil && errors.Cause(err) != sql.ErrNoRows {
+		return errors.Trace(err)
+	}
+
+	return errors.Trace(session.SetValue(ctx, key, value))
+}
+
+func (s *shttp) GetSessionString(ctx context.Context, key string) (string, error) {
+	session, err := s.GetSession(ctx)
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+
+	return session.GetString(key)
+}
+
+func (s *shttp) GetSessionInt64(ctx context.Context, key string) (int64, error) {
+	session, err := s.GetSession(ctx)
+	if err != nil {
+		return 0, errors.Trace(err)
+	}
+
+	return session.GetInt64(key)
+}
+
+func (s *shttp) GetUser(ctx context.Context) (django.User, error) {
+	session, err := s.GetSession(ctx)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	user, err := session.GetUser(ctx)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	return user, nil
+}
+
+type CodeWriter struct {
+	code int
+	http.ResponseWriter
+}
+
+func (c *CodeWriter) WriteHeader(code int) {
+	c.code = code
+	c.ResponseWriter.WriteHeader(code)
+}
+
+func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	clientIP := r.RemoteAddr
+	if colon := strings.LastIndex(clientIP, ":"); colon != -1 {
+		clientIP = clientIP[:colon]
+	}
+
+	w2 := &CodeWriter{200, w}
+
+	start := time.Now()
+	logger := acko.LOGGER.New(
+		"url", r.RequestURI, "method", r.Method, "ip", clientIP,
+	)
+	logger.Debug("http_started")
+	logger = logger.New(
+		"time", log15.Lazy{func() interface{} { return time.Since(start) }},
+		"code", log15.Lazy{func() interface{} { return w2.code }},
+	)
+
+	db, err := acko.Ctx2Db(s.ctx)
+	if err != nil {
+		acko.LOGGER.Crit(
+			"failed_to_get_db", "err", errors.ErrorStack(err),
+		)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	tx, err := db.Beginx()
+	if err != nil {
+		acko.LOGGER.Crit(
+			"failed_to_create_transaction", "err", errors.ErrorStack(err),
+		)
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	ctx := context.WithValue(r.Context(), acko.KeyDBTransaction, tx)
+	ctx = context.WithValue(ctx, acko.KeyDB, db)
+
+	defer func() {
+		if err := recover(); err != nil {
+			err2, ok := err.(error)
+			if ok {
+				logger.Error(
+					"server_error", "err", errors.ErrorStack(err2),
+				)
+			} else {
+				logger.Error(
+					"server_uerror", "err", err, "ip", clientIP,
+				)
+			}
+
+			err3 := tx.Rollback()
+			if err3 != nil {
+				logger.Crit("server_tx_error", "err", errors.ErrorStack(err3))
+			}
+
+			http.Error(w, fmt.Sprint("%v", err), 500)
+		}
+	}()
+
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+	sessionid, err := r.Cookie("sessionid")
+	if err != nil {
+		if err == http.ErrNoCookie {
+			sid, err := s.sessions.CreateSession(ctx)
+			if err != nil {
+				s.Reject(w, errors.ErrorStack(errors.Trace(err)))
+				return
+			}
+
+			sessionid = &http.Cookie{
+				Name: "sessionid", Value: sid.SessionKey(), Path: "/",
+			}
+			http.SetCookie(w, sessionid)
+		} else {
+			logger.Error(
+				"cookie_error", "err", errors.ErrorStack(err),
+				"ptr", fmt.Sprintf("%p", r),
+			)
+			s.Reject(w, errors.ErrorStack(errors.Trace(err)))
+			return
+		}
+	}
+
+	ctx = context.WithValue(ctx, acko.KeySession, sessionid.Value)
+	s.mux.ServeHTTP(w2, r.WithContext(ctx))
+
+	if w2.code < 400 {
+		err = tx.Commit()
+		if err != nil {
+			logger.Crit(
+				"failed_to_commit_transaction", "err", errors.ErrorStack(err),
+			)
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+	} else {
+		err = tx.Rollback()
+		if err != nil {
+			logger.Crit(
+				"failed_to_rollback_transaction", "err", errors.ErrorStack(err),
+			)
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+	}
+
+	logger.Debug("http_served")
+}
