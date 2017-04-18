@@ -23,7 +23,7 @@ func NotifyR2D2(oid, app, okind, ekind string, edata, odata interface{}) error {
 		return errors.Trace(err)
 	}
 
-	req, err := http.NewRequest("POST", "http://127.0.0.1:8001/events/",
+	req, err := http.NewRequest("POST", "http://127.0.0.1:8001/r2d2/event/",
 		bytes.NewBuffer(d))
 	req.Header.Add("Content-Type", "application/json")
 	client := &http.Client{}
