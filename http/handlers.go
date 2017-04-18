@@ -46,30 +46,6 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 	s.Respond(w, v)
 }
 
-func (s *shttp) elmPage(w http.ResponseWriter, r *http.Request) {
-	_, err := s.GetUser(r.Context())
-	if err != nil {
-		s.Redirect(w, r, "admin/", http.StatusFound)
-		return
-	}
-	w.Write(
-		[]byte(`
-			<!DOCTYPE html>
-			<html>
-				<head>
-					<meta charset="utf-8" />
-					<meta content="width=device-width,
-						  initial-scale=1.0" name="viewport" />
-					<title>r2d2</title>
-					<link href="/static/style.css" rel="stylesheet"
-					      type="text/css" />
-				</head>
-				<body data-csrf="asd"><script src="/static/elm.js"></script></body>
-				<h1>
-			</html>
-		`),
-	)
-}
 
 func (s *shttp) testUploadPage(w http.ResponseWriter, _ *http.Request) {
 	w.Write(
@@ -94,6 +70,5 @@ func (s *shttp) testUploadPage(w http.ResponseWriter, _ *http.Request) {
 func (s *shttp) register() {
 	s.mux.Handle("/debug/", http.DefaultServeMux)
 	s.Register("/_session", s.sessionAPI)
-	s.Register("/", s.elmPage)
 	s.Register("/testUpload", s.testUploadPage)
 }
