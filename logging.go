@@ -63,7 +63,7 @@ func SetLoggingVerbosity(level int) {
 						log15.MultiHandler(
 							log15.Must.FileHandler(logfile_general, log15.LogfmtFormat()),
 							log15.Must.SyslogNetHandler("udp",
-								"logs5.papertrailapp.com:53174",
+								"logs5.papertrailapp.com:32438",
 								syslog.LOG_DEBUG|syslog.LOG_USER, "claimator",
 								log15.LogfmtFormat()),
 							log15.StreamHandler(os.Stderr, log15.TerminalFormat()),
