@@ -3,6 +3,8 @@ package amalgam
 import (
 	"database/sql/driver"
 	"encoding/json"
+    "net"
+    "net/http"
 
 	"github.com/juju/errors"
 )
@@ -33,3 +35,14 @@ func (p *PgJson) Scan(src interface{}) error {
 
 	return nil
 }
+
+func GetIPFromRequest(r *http.Request) (string, error) {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+
+	return ip, nil
+}
+
+
