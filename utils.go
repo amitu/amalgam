@@ -5,6 +5,11 @@ import (
 	"encoding/json"
     "net"
     "net/http"
+    "strings"
+    "crypto/cipher"
+    "crypto/aes"
+    "encoding/base64"
+    "strconv"
 
 	"github.com/juju/errors"
 )
@@ -44,5 +49,44 @@ func GetIPFromRequest(r *http.Request) (string, error) {
 
 	return ip, nil
 }
+
+func DecodeTracker(et string) (string, error) {
+    et = strings.Replace(et, ".", "=", -1)
+
+    e, err := base64.URLEncoding.DecodeString(et)
+    if err != nil {
+        return "", errors.Trace(err)
+    }
+
+    block, err := aes.NewCipher([]byte(Secret[:24]))
+    if err != nil {
+        return "", errors.Trace(err)
+    }
+
+    blockmode := cipher.NewCBCDecrypter(
+        block, []byte(Secret[len(Secret)-16:]),
+    )
+
+    blockmode.CryptBlocks(e, e)
+
+    tracker := strconv.Itoa(int(e[4]))
+
+    return tracker, nil
+}
+
+func GetTrackerFromRequest(r *http.Request) (string){
+    var tracker string = ""
+    cookies := r.Cookies()
+    for i := 0 ; i < len(cookies); i++ {
+        cookie := cookies[i]
+        if cookie.Name == "trackerid" {
+            tracker = cookie.Value
+            break
+        }
+    }
+
+    return tracker
+}
+
 
 

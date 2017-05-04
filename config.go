@@ -18,7 +18,7 @@ var (
 	DbUser    = "user"
 	DbPass    = ""
 	Verbosity = 4
-	Secret    = ""
+	Secret    = "se(vh!38e21qca#9m7g0#5plq+a*z#imfjr10&iezsfmh6l)v("
 	Config    = "r2d2.conf"
 
 	FLAGSET *flag.FlagSet = nil
