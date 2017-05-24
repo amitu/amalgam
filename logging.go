@@ -53,39 +53,71 @@ func SetLoggingVerbosity(level int) {
 
 	LOGGER = log15.Root()
 
-	LOGGER.SetHandler(
-		log15.MultiHandler(
-			log15.LvlFilterHandler(
-				log15.Lvl(level),
-				log15.CallerFuncHandler(
-					log15.CallerStackHandler(
-						"%+v",
-						log15.MultiHandler(
-							log15.Must.FileHandler(logfile_general, log15.LogfmtFormat()),
-							log15.Must.SyslogNetHandler("udp",
-								"logs5.papertrailapp.com:32438",
-								syslog.LOG_DEBUG|syslog.LOG_USER, "claimator",
-								log15.LogfmtFormat()),
-							log15.StreamHandler(os.Stderr, log15.TerminalFormat()),
-							log15.FuncHandler(LoggerStatter),
+	if Debug {
+		LOGGER.SetHandler(
+			log15.MultiHandler(
+				log15.LvlFilterHandler(
+					log15.Lvl(level),
+					log15.CallerFuncHandler(
+						log15.CallerStackHandler(
+							"%+v",
+							log15.MultiHandler(
+								log15.Must.FileHandler(logfile_general, log15.LogfmtFormat()),
+								log15.StreamHandler(os.Stderr, log15.TerminalFormat()),
+								log15.FuncHandler(LoggerStatter),
+							),
 						),
 					),
 				),
-			),
-			log15.LvlFilterHandler(
-				log15.Lvl(log15.LvlError),
-				log15.CallerFuncHandler(
-					log15.CallerStackHandler(
-						"%+v",
-						log15.Must.FileHandler(logfile_error, log15.LogfmtFormat()),
+				log15.LvlFilterHandler(
+					log15.Lvl(log15.LvlError),
+					log15.CallerFuncHandler(
+						log15.CallerStackHandler(
+							"%+v",
+							log15.Must.FileHandler(logfile_error, log15.LogfmtFormat()),
+						),
 					),
 				),
-			),
-			LvlFilterHandler(
-				log15.Lvl(log15.LvlInfo),
-				log15.Must.FileHandler(logfile_info, log15.LogfmtFormat()),
-			)),
-	)
+				LvlFilterHandler(
+					log15.Lvl(log15.LvlInfo),
+					log15.Must.FileHandler(logfile_info, log15.LogfmtFormat()),
+				)),
+		)
+	} else {
+		LOGGER.SetHandler(
+			log15.MultiHandler(
+				log15.LvlFilterHandler(
+					log15.Lvl(level),
+					log15.CallerFuncHandler(
+						log15.CallerStackHandler(
+							"%+v",
+							log15.MultiHandler(
+								log15.Must.FileHandler(logfile_general, log15.LogfmtFormat()),
+								log15.Must.SyslogNetHandler("udp",
+									"logs5.papertrailapp.com:32438",
+									syslog.LOG_DEBUG|syslog.LOG_USER, "claimator",
+									log15.LogfmtFormat()),
+								log15.StreamHandler(os.Stderr, log15.TerminalFormat()),
+								log15.FuncHandler(LoggerStatter),
+							),
+						),
+					),
+				),
+				log15.LvlFilterHandler(
+					log15.Lvl(log15.LvlError),
+					log15.CallerFuncHandler(
+						log15.CallerStackHandler(
+							"%+v",
+							log15.Must.FileHandler(logfile_error, log15.LogfmtFormat()),
+						),
+					),
+				),
+				LvlFilterHandler(
+					log15.Lvl(log15.LvlInfo),
+					log15.Must.FileHandler(logfile_info, log15.LogfmtFormat()),
+				)),
+		)
+	}
 
 	LOGGER.Debug(
 		"logger_initialized", log15.Ctx{

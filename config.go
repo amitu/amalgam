@@ -22,6 +22,7 @@ var (
 	Secret     = ""
 	Config     = ""
 	CreateConf = false
+	Debug      = true
 
 	FLAGSET *flag.FlagSet = nil
 
@@ -84,6 +85,7 @@ func init() {
 	StringFlag(&DbPass, "dbpass", DbPass, "database password")
 	StringFlag(&Secret, "secret", Secret, "django secret key")
 	BoolFlag(&CreateConf, "create-conf", CreateConf, "")
+	BoolFlag(&Debug, "debug", Debug, "")
 }
 
 func Init() {
@@ -130,6 +132,7 @@ func writeConfFile(confFile string) {
 	for key, val := range Confs {
 		var stringVal string
 		var intVal int
+		var boolVal bool
 		var ok bool
 
 		stringVal, ok = val.(string)
@@ -140,6 +143,11 @@ func writeConfFile(confFile string) {
 		intVal, ok = val.(int)
 		if ok {
 			f.WriteString(fmt.Sprintf("%s %d\n", key, intVal))
+		}
+
+		boolVal, ok = val.(bool)
+		if ok {
+			f.WriteString(fmt.Sprintf("%s %t\n", key, boolVal))
 		}
 	}
 
