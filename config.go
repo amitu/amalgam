@@ -58,42 +58,6 @@ func BoolFlag(
 	FLAGSET.BoolVar(varName, name, defVal, description)
 }
 
-//func CreateFlag(
-//	varName interface{},
-//	name string,
-//	defVal interface{},
-//	description string,
-//) {
-//	var intVal int
-//	var stringVal string
-//	var ok = false
-//
-//	stringVal, ok = defVal.(string)
-//	if !ok {
-//		intVal, ok = defVal.(int)
-//		if !ok {
-//			panic("Unhandled flag type!")
-//		}
-//
-//		Confs[name] = defVal
-//
-//		v, ok := varName.(*int)
-//		if !ok {
-//			panic("wrong pointer type")
-//		}
-//		FLAGSET.IntVar(v, name, intVal, description)
-//
-//	} else {
-//		Confs[name] = defVal
-//
-//		v, ok := varName.(*string)
-//		if !ok {
-//			panic("wrong pointer type")
-//		}
-//		FLAGSET.StringVar(v, name, stringVal, description)
-//	}
-//}
-
 func init() {
 	filename, _ := os.Executable()
 	Config = filepath.Base(filename) + ".conf"
