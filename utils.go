@@ -1,15 +1,15 @@
 package amalgam
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"database/sql/driver"
+	"encoding/base64"
 	"encoding/json"
-    "net"
-    "net/http"
-    "strings"
-    "crypto/cipher"
-    "crypto/aes"
-    "encoding/base64"
-    "strconv"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/juju/errors"
 )
@@ -41,6 +41,41 @@ func (p *PgJson) Scan(src interface{}) error {
 	return nil
 }
 
+type NullPgJson struct {
+	PgJson PgJson
+	Valid  bool
+}
+
+func (p NullPgJson) Value() (driver.Value, error) {
+	if !p.Valid {
+		return nil, nil
+	}
+	j, err := json.Marshal(p)
+	return j, err
+}
+
+func (p *NullPgJson) Scan(src interface{}) error {
+	if src == nil {
+		p.Valid = false
+		return nil
+	}
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("Type assertion .([]byte) failed.")
+	}
+
+	js := PgJson{}
+	err := json.Unmarshal(source, &js)
+	if err != nil {
+		return err
+	}
+
+	p.Valid = true
+	p.PgJson = js
+
+	return nil
+}
+
 func GetIPFromRequest(r *http.Request) (string, error) {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -51,42 +86,39 @@ func GetIPFromRequest(r *http.Request) (string, error) {
 }
 
 func DecodeTracker(et string) (string, error) {
-    et = strings.Replace(et, ".", "=", -1)
+	et = strings.Replace(et, ".", "=", -1)
 
-    e, err := base64.URLEncoding.DecodeString(et)
-    if err != nil {
-        return "", errors.Trace(err)
-    }
+	e, err := base64.URLEncoding.DecodeString(et)
+	if err != nil {
+		return "", errors.Trace(err)
+	}
 
-    block, err := aes.NewCipher([]byte(Secret[:24]))
-    if err != nil {
-        return "", errors.Trace(err)
-    }
+	block, err := aes.NewCipher([]byte(Secret[:24]))
+	if err != nil {
+		return "", errors.Trace(err)
+	}
 
-    blockmode := cipher.NewCBCDecrypter(
-        block, []byte(Secret[len(Secret)-16:]),
-    )
+	blockmode := cipher.NewCBCDecrypter(
+		block, []byte(Secret[len(Secret)-16:]),
+	)
 
-    blockmode.CryptBlocks(e, e)
+	blockmode.CryptBlocks(e, e)
 
-    tracker := strconv.Itoa(int(e[4]))
+	tracker := strconv.Itoa(int(e[4]))
 
-    return tracker, nil
+	return tracker, nil
 }
 
-func GetTrackerFromRequest(r *http.Request) (string){
-    var tracker string = ""
-    cookies := r.Cookies()
-    for i := 0 ; i < len(cookies); i++ {
-        cookie := cookies[i]
-        if cookie.Name == "trackerid" {
-            tracker = cookie.Value
-            break
-        }
-    }
+func GetTrackerFromRequest(r *http.Request) string {
+	var tracker string = ""
+	cookies := r.Cookies()
+	for i := 0; i < len(cookies); i++ {
+		cookie := cookies[i]
+		if cookie.Name == "trackerid" {
+			tracker = cookie.Value
+			break
+		}
+	}
 
-    return tracker
+	return tracker
 }
-
-
-
