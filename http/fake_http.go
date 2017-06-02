@@ -39,6 +39,10 @@ func (f *fhttp) GetUser(ctx context.Context) (django.User, error) {
 	return nil, nil
 }
 
+func (f *fhttp) Success(w http.ResponseWriter, result interface{}, api string) {
+	panic("not implemented")
+}
+
 func NewFakeHTTPService() HTTPService {
 	return &fhttp{}
 }

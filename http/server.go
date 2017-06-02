@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
-	amalgam "github.com/amitu/amalgam"
 	"github.com/juju/errors"
 )
 

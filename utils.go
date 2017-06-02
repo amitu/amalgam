@@ -6,10 +6,10 @@ import (
 	"database/sql/driver"
 	"encoding/base64"
 	"encoding/json"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/juju/errors"
 )
@@ -86,8 +86,14 @@ func GetIPFromRequest(r *http.Request) (string, error) {
 }
 
 func DecodeTracker(et string) (string, error) {
-	et = strings.Replace(et, ".", "=", -1)
+	if len(et)%3 != 0 {
+		rem := len(et) % 3
+		for i := 3; i > rem; i-- {
+			et = et + "="
 
+		}
+	}
+	//et = strings.Replace(et, ".", "=", -1)
 	e, err := base64.URLEncoding.DecodeString(et)
 	if err != nil {
 		return "", errors.Trace(err)
@@ -104,7 +110,16 @@ func DecodeTracker(et string) (string, error) {
 
 	blockmode.CryptBlocks(e, e)
 
-	tracker := strconv.Itoa(int(e[4]))
+	b := int(e[4])
+	var exp = 1
+	for i := 5; i < len(e); i++ {
+		if int(e[i]) != 0 {
+			b += int(math.Pow(float64(256), float64(exp))) * int(e[i])
+		}
+		exp++
+	}
+
+	tracker := strconv.Itoa(b)
 
 	return tracker, nil
 }
