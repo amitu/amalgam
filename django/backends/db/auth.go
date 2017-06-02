@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	amalgam "github.com/amitu/amalgam"
+	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
 	"github.com/juju/errors"
 )
@@ -111,15 +111,15 @@ func (u *user) Permissions() ([]django.Permission, error) {
 }
 
 func (u *user) HasRole(ctx context.Context, roleId int64) (bool, error) {
-	q := `
+	q := fmt.Sprintf(`
 		SELECT
 			count(*)
 		FROM
-			auth_user_groups
+			%s
 		WHERE
 			user_id = $1 AND
 			group_id = $2
-	`
+	`, u.store.UserGroupsTable)
 	num, err := amalgam.QueryIntoInt(ctx, q, u.DID, roleId)
 	if err != nil {
 		return false, errors.Trace(err)
@@ -163,13 +163,44 @@ func (u *user) IsSuperUser() bool {
 	return false
 }
 
+type AuthTables struct {
+	UserTable             string
+	GroupTable            string
+	PermissionTable       string
+	UserGroupsTable      string
+	UserPermissionsTable string
+	GroupPermissionsTable string
+}
+
+func updateAuthTablesWithDefault(at *AuthTables) {
+    if at.UserTable == "" {
+        at.UserTable = "auth_user"
+    }
+    if at.UserTable == "" {
+        at.GroupTable = "auth_group"
+    }
+    if at.PermissionTable == "" {
+        at.PermissionTable =       "auth_permission"
+    }
+    if at.UserGroupsTable == "" {
+        at.UserGroupsTable = "auth_user_groups"
+    }
+    if at.UserPermissionsTable == "" {
+        at.UserPermissionsTable = "auth_user_user_permissions"
+    }
+    if at.GroupPermissionsTable == "" {
+        at.GroupPermissionsTable = "auth_group_permissions"
+    }
+}
+
 type astore struct {
-	user_table string
+	AuthTables
 }
 
 func (s *astore) Groups(ctx context.Context) ([]django.Group, error) {
 	groups := []*group{}
-	err := amalgam.QueryIntoSlice(ctx, &groups, "SELECT * FROM auth_group")
+	query := fmt.Sprintf("SELECT * FROM %s", s.GroupTable)
+	err := amalgam.QueryIntoSlice(ctx, &groups, query)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -184,9 +215,8 @@ func (s *astore) Groups(ctx context.Context) ([]django.Group, error) {
 
 func (s *astore) GroupByID(ctx context.Context, id int64) (django.Group, error) {
 	group := group{}
-	err := amalgam.QueryIntoStruct(
-		ctx, &group, "SELECT * FROM auth_group WHERE id = $1", id,
-	)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id = $1", s.GroupTable)
+	err := amalgam.QueryIntoStruct(ctx, &group, query, id)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -198,9 +228,8 @@ func (s *astore) GroupByName(
 	ctx context.Context, name string,
 ) (django.Group, error) {
 	group := group{}
-	err := amalgam.QueryIntoStruct(
-		ctx, &group, `SELECT * FROM auth_group WHERE name = $1`, name,
-	)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE name = $1", s.GroupTable)
+	err := amalgam.QueryIntoStruct(ctx, &group, query, name)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -210,18 +239,16 @@ func (s *astore) GroupByName(
 
 func (s *astore) UserByID(ctx context.Context, id int64) (django.User, error) {
 	u := &user{}
-	err := amalgam.QueryIntoStruct(
-		ctx, u,
-		fmt.Sprint(`
-			SELECT
-				id, username, first_name, last_name
-			FROM
-				%s
-			WHERE
-				id = $1
-		`, s.user_table),
-		id,
+	query := fmt.Sprint(`
+		SELECT
+			id, username, first_name, last_name
+		FROM
+			%s
+		WHERE
+			id = $1
+	`, s.UserTable,
 	)
+	err := amalgam.QueryIntoStruct(ctx, u, query, id)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -248,9 +275,8 @@ func (s *astore) Permissions(ctx context.Context) ([]django.Permission, error) {
 
 func (s *astore) PermissionByID(ctx context.Context, id int64) (django.Permission, error) {
 	perm := permission{}
-	err := amalgam.QueryIntoStruct(
-		ctx, &permission{}, "select * from auth_permission where id = $1", id,
-	)
+	query := fmt.Sprintf("select * from %s where id = $1", s.PermissionTable)
+	err := amalgam.QueryIntoStruct(ctx, &permission{}, query, id)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -262,9 +288,8 @@ func (s *astore) PermissionByCode(
 	ctx context.Context, code string,
 ) (django.Permission, error) {
 	perm := permission{}
-	err := amalgam.QueryIntoStruct(
-		ctx, &permission{}, "select * from auth_permission where codename = $1", code,
-	)
+	query := fmt.Sprintf("select * from %s where codename = $1", s.PermissionTable)
+	err := amalgam.QueryIntoStruct(ctx, &permission{}, query, code)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -272,21 +297,22 @@ func (s *astore) PermissionByCode(
 	return &perm, nil
 }
 
-func NewAuthStore(ctx context.Context, user_table string) (django.AuthStore, error) {
-	gcount, err := amalgam.QueryIntoInt(ctx, "SELECT count(*) FROM auth_group")
+func NewCustomAuthStore(ctx context.Context, auth_tables AuthTables) (django.AuthStore, error) {
+    updateAuthTablesWithDefault(&auth_tables)
+	query := fmt.Sprintf("SELECT count(*) FROM %s", auth_tables.GroupTable)
+	gcount, err := amalgam.QueryIntoInt(ctx, query)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 
-	pcount, err := amalgam.QueryIntoInt(
-		ctx, "SELECT count(*) FROM auth_permission",
-	)
+	query = fmt.Sprintf("SELECT count(*) FROM %s", auth_tables.PermissionTable)
+	pcount, err := amalgam.QueryIntoInt(ctx, query)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 
-	ucount, err := amalgam.QueryIntoInt(ctx,
-		fmt.Sprintf("SELECT count(*) FROM %s", user_table))
+	query = fmt.Sprintf("SELECT count(*) FROM %s", auth_tables.UserTable)
+	ucount, err := amalgam.QueryIntoInt(ctx, query)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -295,5 +321,11 @@ func NewAuthStore(ctx context.Context, user_table string) (django.AuthStore, err
 		"found_auth_tables", "groups", gcount,
 		"permissions", pcount, "users", ucount,
 	)
-	return &astore{user_table: user_table}, nil
+	return &astore{auth_tables}, nil
+}
+
+func NewAuthStore(ctx context.Context) (django.AuthStore, error) {
+    auth_tables := AuthTables{}
+    updateAuthTablesWithDefault(&auth_tables)
+    return NewCustomAuthStore(ctx, auth_tables)
 }

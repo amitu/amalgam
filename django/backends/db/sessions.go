@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	amalgam "github.com/amitu/amalgam"
+	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
 	"github.com/juju/errors"
 )
