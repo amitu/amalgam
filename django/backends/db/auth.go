@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	amalgam "github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
@@ -163,6 +164,7 @@ func (u *user) IsSuperUser() bool {
 }
 
 type astore struct {
+	user_table string
 }
 
 func (s *astore) Groups(ctx context.Context) ([]django.Group, error) {
@@ -209,14 +211,16 @@ func (s *astore) GroupByName(
 func (s *astore) UserByID(ctx context.Context, id int64) (django.User, error) {
 	u := &user{}
 	err := amalgam.QueryIntoStruct(
-		ctx, u, `
+		ctx, u,
+		fmt.Sprint(`
 			SELECT
 				id, username, first_name, last_name
 			FROM
-				auth_user
+				%s
 			WHERE
 				id = $1
-		`, id,
+		`, s.user_table),
+		id,
 	)
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -268,7 +272,7 @@ func (s *astore) PermissionByCode(
 	return &perm, nil
 }
 
-func NewAuthStore(ctx context.Context) (django.AuthStore, error) {
+func NewAuthStore(ctx context.Context, user_table string) (django.AuthStore, error) {
 	gcount, err := amalgam.QueryIntoInt(ctx, "SELECT count(*) FROM auth_group")
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -281,7 +285,8 @@ func NewAuthStore(ctx context.Context) (django.AuthStore, error) {
 		return nil, errors.Trace(err)
 	}
 
-	ucount, err := amalgam.QueryIntoInt(ctx, "SELECT count(*) FROM auth_user")
+	ucount, err := amalgam.QueryIntoInt(ctx,
+		fmt.Sprintf("SELECT count(*) FROM %s", user_table))
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -290,5 +295,5 @@ func NewAuthStore(ctx context.Context) (django.AuthStore, error) {
 		"found_auth_tables", "groups", gcount,
 		"permissions", pcount, "users", ucount,
 	)
-	return &astore{}, nil
+	return &astore{user_table: user_table}, nil
 }
