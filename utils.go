@@ -116,8 +116,7 @@ func EncodeID(id int64, model string) string {
 
 	blockmode.CryptBlocks(message, message)
 
-	tt := make([]byte, 32)
-	base64.URLEncoding.Encode(tt, message)
+	tt := base64.URLEncoding.EncodeToString(message)
 
 	eid := strings.Replace(string(tt), "=", "", -1)
 
