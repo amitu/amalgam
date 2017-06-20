@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/namsral/flag"
+    "github.com/getsentry/raven-go"
 )
 
 var (
@@ -23,6 +24,7 @@ var (
 	Config     = ""
 	CreateConf = false
 	Debug      = true
+    Sentry     = ""
 
 	FLAGSET *flag.FlagSet = nil
 
@@ -86,6 +88,7 @@ func init() {
 	StringFlag(&Secret, "secret", Secret, "django secret key")
 	BoolFlag(&CreateConf, "create-conf", CreateConf, "")
 	BoolFlag(&Debug, "debug", Debug, "")
+    StringFlag(&Sentry, "sentry", Sentry, "sentry endpoint")
 }
 
 func Init() {
@@ -119,6 +122,8 @@ func Init() {
 	}
 
 	log.Println("config_parsed", "args", os.Args[1:], "flags", FLAGSET.Args())
+
+    raven.SetDSN(Sentry)
 
 }
 
