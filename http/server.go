@@ -8,7 +8,6 @@ import (
 	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
 	"github.com/juju/errors"
-    "github.com/getsentry/raven-go"
 )
 
 type shttp struct {
@@ -39,7 +38,7 @@ func (s *shttp) Redirect(w http.ResponseWriter, r *http.Request, url string, cod
 
 func (s *shttp) Register(pattern string, fn http.HandlerFunc) {
 	amalgam.LOGGER.Debug("registering pattern", "pattern", pattern)
-	s.mux.HandleFunc(pattern, raven.RecoveryHandler(fn))
+	s.mux.HandleFunc(pattern, fn)
 }
 
 type EResult struct {

@@ -12,6 +12,7 @@ import (
 	"github.com/amitu/amalgam/django"
 	"github.com/inconshreveable/log15"
 	"github.com/juju/errors"
+    "github.com/getsentry/raven-go"
 )
 
 var (
@@ -96,8 +97,12 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 	logger.Debug("http_started")
 	logger = logger.New(
-		"time", log15.Lazy{func() interface{} { return time.Since(start) }},
-		"code", log15.Lazy{func() interface{} { return w2.code }},
+		"time", log15.Lazy{func() interface{} {
+			return time.Since(start)
+		}},
+		"code", log15.Lazy{func() interface{} {
+			return w2.code
+		}},
 	)
 
 	db, err := amalgam.Ctx2Db(s.ctx)
@@ -140,6 +145,20 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			http.Error(w, fmt.Sprint("%v", err), 500)
+
+			if !amalgam.Debug && amalgam.Sentry != "" {
+				// raven/sentry stuff
+				rvalStr := fmt.Sprint(err)
+				packet := raven.NewPacket(
+					rvalStr,
+					raven.NewException(
+						errors.New(rvalStr),
+						raven.NewStacktrace(2, 3, nil),
+					),
+					raven.NewHttp(r),
+				)
+				raven.Capture(packet, nil)
+			}
 		}
 	}()
 
