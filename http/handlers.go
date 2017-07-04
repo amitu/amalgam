@@ -46,7 +46,6 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 	s.Respond(w, v)
 }
 
-
 func (s *shttp) testUploadPage(w http.ResponseWriter, _ *http.Request) {
 	w.Write(
 		[]byte(`

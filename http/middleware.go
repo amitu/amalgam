@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	amalgam "github.com/amitu/amalgam"
+	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
+	"github.com/getsentry/raven-go"
 	"github.com/inconshreveable/log15"
 	"github.com/juju/errors"
-    "github.com/getsentry/raven-go"
 )
 
 var (
@@ -146,7 +146,7 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			http.Error(w, fmt.Sprint("%v", err), 500)
 
-			if !amalgam.Debug && amalgam.Sentry != "" {
+			if (!amalgam.Debug) && (amalgam.Sentry) != "" {
 				// raven/sentry stuff
 				rvalStr := fmt.Sprint(err)
 				packet := raven.NewPacket(

@@ -42,14 +42,17 @@ func (s *shttp) Register(pattern string, fn http.HandlerFunc) {
 }
 
 type EResult struct {
-	Result interface{} `json:"result"`
-	Error  string      `json:"error"`
+	Result  interface{} `json:"result,omitempty"`
+	Error   string      `json:"error,omitempty"`
+	Success bool        `json:"success"`
 }
 
 func (s *shttp) Reject(w http.ResponseWriter, reason string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	j, err := json.MarshalIndent(&EResult{Error: reason}, "", "    ")
+	j, err := json.MarshalIndent(
+		&EResult{Error: reason, Success: false}, "", "    ",
+	)
 	if err != nil {
 		amalgam.LOGGER.Error(
 			"reject_json_failed", "err", errors.ErrorStack(err),
@@ -63,7 +66,9 @@ func (s *shttp) Reject(w http.ResponseWriter, reason string) {
 func (s *shttp) Respond(w http.ResponseWriter, result interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	j, err := json.MarshalIndent(&EResult{Result: result}, "", "    ")
+	j, err := json.MarshalIndent(
+		&EResult{Result: result, Success: true}, "", "    ",
+	)
 	if err != nil {
 		amalgam.LOGGER.Error(
 			"respond_json_failed", "err", errors.ErrorStack(err),
