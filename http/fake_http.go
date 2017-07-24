@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
 )
 
@@ -26,7 +27,7 @@ func (f *fhttp) Redirect(w http.ResponseWriter, r *http.Request, url string, cod
 	panic("not implemented")
 }
 
-func (f *fhttp) Reject(w http.ResponseWriter, reason string) {
+func (f *fhttp) Reject(w http.ResponseWriter, reason map[string][]amalgam.AError) {
 	panic("not implemented")
 }
 

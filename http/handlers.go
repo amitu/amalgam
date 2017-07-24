@@ -5,6 +5,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
 	"github.com/juju/errors"
 )
@@ -13,14 +14,29 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	value := r.FormValue("value")
 	ctx := r.Context()
+	errMap := map[string][]amalgam.AError{}
 
 	if value != "" {
 		if key[0] == '_' {
-			s.Reject(w, "cant modify private keys")
+			amalgam.LOGGER.Error("can't_modify_private_keys")
+			errMap["__all__"] = append(
+				errMap["__all__"],
+				amalgam.AError{Human: "Oops something went wrong"},
+			)
+
+			s.Reject(w, errMap)
 		}
 		err := s.SetSession(ctx, key, value)
 		if err != nil {
-			s.Reject(w, errors.ErrorStack(err))
+			amalgam.LOGGER.Error(
+				"unable_to_set_session", "err", errors.ErrorStack(err),
+			)
+			errMap["__all__"] = append(
+				errMap["__all__"],
+				amalgam.AError{Human: "Oops something went wrong"},
+			)
+
+			s.Reject(w, errMap)
 			return
 		}
 		s.Respond(w, "ok")
@@ -30,7 +46,14 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 	if key == django.KeyUserID {
 		user, err := s.GetUser(ctx)
 		if err != nil {
-			s.Reject(w, errors.ErrorStack(err))
+			amalgam.LOGGER.Error(
+				"unable_to_get_user", "err", errors.ErrorStack(err),
+			)
+			errMap["__all__"] = append(
+				errMap["__all__"],
+				amalgam.AError{Human: "Oops something went wrong"},
+			)
+			s.Reject(w, errMap)
 			return
 		}
 		s.Respond(w, user)
@@ -39,7 +62,14 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 
 	v, err := s.GetSessionString(ctx, key)
 	if err != nil {
-		s.Reject(w, errors.ErrorStack(err))
+		amalgam.LOGGER.Error(
+			"unable_to_get_session", "err", errors.ErrorStack(err),
+		)
+		errMap["__all__"] = append(
+			errMap["__all__"],
+			amalgam.AError{Human: "Oops something went wrong"},
+		)
+		s.Reject(w, errMap)
 		return
 	}
 

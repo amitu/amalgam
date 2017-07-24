@@ -80,6 +80,10 @@ func (p *NullPgJson) Scan(src interface{}) error {
 	return nil
 }
 
+type AError struct {
+	Human string `json:"human"`
+}
+
 func GetIPFromRequest(r *http.Request) (string, error) {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
