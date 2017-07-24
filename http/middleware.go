@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -144,7 +145,15 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				logger.Crit("server_tx_error", "err", errors.ErrorStack(err3))
 			}
 
-			http.Error(w, fmt.Sprint("%v", err), 500)
+			errMap := map[string][]amalgam.AError{}
+			errMap["__all__"] = append(
+				errMap["__all__"],
+				amalgam.AError{Human: "Oops something went wrong!"},
+			)
+
+			res := &EResult{Errors: errMap, Success: false}
+			m, err := json.Marshal(res)
+			http.Error(w, string(m), 500)
 
 			if (!amalgam.Debug) && (amalgam.Sentry) != "" {
 				// raven/sentry stuff
@@ -166,12 +175,23 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
 
+	errMap := map[string][]amalgam.AError{}
+
 	sessionid, err := r.Cookie("sessionid")
 	if err != nil {
 		if err == http.ErrNoCookie {
 			sid, err := s.sessions.CreateSession(ctx)
 			if err != nil {
-				s.Reject(w, errors.ErrorStack(errors.Trace(err)))
+				logger.Crit(
+					"session_creation_error",
+					"err",
+					errors.ErrorStack(errors.Trace(err)),
+				)
+				errMap["__all__"] = append(
+					errMap["__all__"],
+					amalgam.AError{Human: "Oops something went wrong"},
+				)
+				s.Reject(w, errMap)
 				return
 			}
 
@@ -179,13 +199,6 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Name: "sessionid", Value: sid.SessionKey(), Path: "/",
 			}
 			http.SetCookie(w, sessionid)
-		} else {
-			logger.Error(
-				"cookie_error", "err", errors.ErrorStack(err),
-				"ptr", fmt.Sprintf("%p", r),
-			)
-			s.Reject(w, errors.ErrorStack(errors.Trace(err)))
-			return
 		}
 	}
 
@@ -198,7 +211,12 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			logger.Crit(
 				"failed_to_commit_transaction", "err", errors.ErrorStack(err),
 			)
-			http.Error(w, http.StatusText(500), 500)
+			errMap["__all__"] = append(
+				errMap["__all__"],
+				amalgam.AError{Human: "Oops something went wrong"},
+			)
+			m, _ := json.Marshal(errMap)
+			http.Error(w, string(m), 500)
 			return
 		}
 	} else {
@@ -207,7 +225,12 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			logger.Crit(
 				"failed_to_rollback_transaction", "err", errors.ErrorStack(err),
 			)
-			http.Error(w, http.StatusText(500), 500)
+			errMap["__all__"] = append(
+				errMap["__all__"],
+				amalgam.AError{Human: "Oops something went wrong"},
+			)
+			m, _ := json.Marshal(errMap)
+			http.Error(w, string(m), 500)
 			return
 		}
 	}
