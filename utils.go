@@ -81,7 +81,9 @@ func (p *NullPgJson) Scan(src interface{}) error {
 }
 
 type AError struct {
-	Human string `json:"human"`
+	Human   string      `json:"human"`
+	Code    string      `json:"code"`
+	Context interface{} `json:"context"`
 }
 
 func GetIPFromRequest(r *http.Request) (string, error) {
