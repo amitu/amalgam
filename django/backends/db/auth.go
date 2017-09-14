@@ -75,7 +75,7 @@ func (p *permission) Code() string {
 
 type user struct {
 	DID        int64  `db:"id" json:"id"`
-	DUsername  string `db:"username" json:"-"`
+	DUsername  string `db:"phone" json:"-"`
 	DFirstName string `db:"first_name" json:"first_name"`
 	DLastName  string `db:"last_name" json:"last_name"`
 
@@ -232,7 +232,7 @@ func (s *astore) GroupByName(
 
 func (s *astore) UserByID(ctx context.Context, id int64) (django.User, error) {
 	u := &user{}
-	query := "SELECT id, username, first_name, last_name FROM " + s.UserTable +
+	query := "SELECT id, phone, first_name, last_name FROM " + s.UserTable +
 		" WHERE id = $1"
 	//query := fmt.Sprint(`
 	//	SELECT
