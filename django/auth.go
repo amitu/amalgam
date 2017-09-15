@@ -4,7 +4,7 @@ import "context"
 
 type User interface {
 	ID() int64
-	Name() string
+	Field(string) (interface{}, bool)
 	Email() string
 	CheckPassword(string) bool
 
@@ -16,7 +16,8 @@ type User interface {
 	SetName(string, bool) error
 	SetEmail(string, bool) error
 	SetPassword(string, bool) error
-	Save() error
+	Save(context.Context) error
+	RefreshFromDB(context.Context) error
 	Deactivate(reason string) error
 
 	IsSuperUser() bool
