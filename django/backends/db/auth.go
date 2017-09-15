@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
@@ -74,20 +75,22 @@ func (p *permission) Code() string {
 }
 
 type user struct {
-	DID        int64  `db:"id" json:"id"`
-	DUsername  string `db:"phone" json:"-"`
-	DFirstName string `db:"first_name" json:"first_name"`
-	DLastName  string `db:"last_name" json:"last_name"`
-
-	store *astore
+	DID     int64 `db:"id" json:"id"`
+	DFields map[string]interface{}
+	store   *astore
 }
 
 func (u *user) ID() int64 {
 	return u.DID
 }
 
-func (u *user) Name() string {
-	return u.DFirstName + " " + u.DLastName
+func (u *user) Field(key string) (interface{}, bool) {
+	val, ok := u.DFields[key]
+	if !ok {
+		return nil, false
+	}
+
+	return val, true
 }
 
 func (u *user) Email() string {
@@ -141,8 +144,42 @@ func (u *user) SetPassword(string, bool) error {
 	return nil
 }
 
-func (u *user) Save() error {
-	panic("not implemented")
+func (u *user) Save(ctx context.Context) error {
+	var values string
+	index := 1
+	var fields []interface{}
+	for k, v := range u.DFields {
+		if k == "id" {
+			continue
+		}
+		values = values + k + "=$" + strconv.Itoa(index) + ","
+		fields = append(fields, v)
+		index++
+	}
+	values = values + "id" + "=$" + strconv.Itoa(index)
+	fields = append(fields, u.DFields["id"])
+
+	query := "UPDATE " + u.store.UserTable + " SET " +
+		values + "WHERE id=$" + strconv.Itoa(index) + ";"
+
+	err := amalgam.Exec(ctx, query, fields...)
+	if err != nil {
+		return errors.Trace(err)
+	}
+
+	return nil
+}
+
+func (u *user) RefreshFromDB(ctx context.Context) error {
+	query := "SELECT * FROM " + u.store.AuthTables.UserTable +
+		" WHERE id = $1"
+
+	userMap, err := amalgam.QueryIntoMap(ctx, query, u.DID)
+	if err != nil {
+		return errors.Trace(err)
+	}
+	u.DFields = userMap
+
 	return nil
 }
 
@@ -232,22 +269,18 @@ func (s *astore) GroupByName(
 
 func (s *astore) UserByID(ctx context.Context, id int64) (django.User, error) {
 	u := &user{}
-	query := "SELECT id, phone, first_name, last_name FROM " + s.UserTable +
+	query := "SELECT * FROM " + s.UserTable +
 		" WHERE id = $1"
-	//query := fmt.Sprint(`
-	//	SELECT
-	//		id, username, first_name, last_name
-	//	FROM
-	//		%s
-	//	WHERE
-	//		id = $1
-	//`, s.UserTable,
-	//)
-	err := amalgam.QueryIntoStruct(ctx, u, query, id)
+
+	userMap, err := amalgam.QueryIntoMap(ctx, query, id)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return u, errors.Trace(err)
 	}
+
+	u.DID = userMap["id"].(int64)
+	u.DFields = userMap
 	u.store = s
+
 	return u, nil
 }
 
