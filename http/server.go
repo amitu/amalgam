@@ -61,7 +61,7 @@ func (s *shttp) Reject(
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Error(w, string(j), http.StatusBadRequest)
+	http.Error(w, string(j), http.StatusOK)
 }
 
 func (s *shttp) Respond(w http.ResponseWriter, result interface{}) {
