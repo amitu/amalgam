@@ -284,6 +284,25 @@ func (s *astore) UserByID(ctx context.Context, id int64) (django.User, error) {
 	return u, nil
 }
 
+func (s *astore) UserByPhone(
+	ctx context.Context, phone string,
+) (django.User, error) {
+	u := &user{}
+	query := "SELECT * FROM " + s.UserTable +
+		" WHERE phone = $1"
+
+	userMap, err := amalgam.QueryIntoMap(ctx, query, phone)
+	if err != nil {
+		return u, errors.Trace(err)
+	}
+
+	u.DID = userMap["id"].(int64)
+	u.DFields = userMap
+	u.store = s
+
+	return u, nil
+}
+
 func (s *astore) UserByEmail(context.Context, string) (django.User, error) {
 	panic("not implemented")
 	return nil, nil
