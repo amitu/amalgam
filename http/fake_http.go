@@ -40,6 +40,12 @@ func (f *fhttp) GetUser(ctx context.Context) (django.User, error) {
 	return nil, nil
 }
 
+func (f *fhttp) GetOrCreateTracker(
+	ctx context.Context, r *http.Request,
+) (string, error) {
+	panic("not implemented")
+}
+
 func (f *fhttp) Success(w http.ResponseWriter, result interface{}, api string) {
 	panic("not implemented")
 }

@@ -240,28 +240,38 @@ func (s *session) Store() django.SessionStore {
 }
 
 func (s *session) GetUser(ctx context.Context) (django.User, error) {
-	uid, err := s.GetInt64(django.KeyUserID)
-	if err != nil {
-		uid, err := s.GetString(django.KeyUserID)
+	api_key := ctx.Value("api_key")
+	if api_key != nil {
+		user, err := s.store.auth.UserByAPIKey(ctx, api_key.(string))
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
-		uid_int, err := strconv.ParseInt(uid, 0, 64)
+
+		return user, nil
+	} else {
+		uid, err := s.GetInt64(django.KeyUserID)
+		if err != nil {
+			uid, err := s.GetString(django.KeyUserID)
+			if err != nil {
+				return nil, errors.Trace(err)
+			}
+			uid_int, err := strconv.ParseInt(uid, 0, 64)
+			if err != nil {
+				return nil, errors.Trace(err)
+			}
+			user, err := s.store.auth.UserByID(ctx, uid_int)
+			if err != nil {
+				return nil, errors.Trace(err)
+			}
+			return user, nil
+		}
+		user, err := s.store.auth.UserByID(ctx, uid)
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
-		user, err := s.store.auth.UserByID(ctx, uid_int)
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
+
 		return user, nil
 	}
-	user, err := s.store.auth.UserByID(ctx, uid)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-
-	return user, nil
 }
 
 func (s *session) prepareForSave() error {
