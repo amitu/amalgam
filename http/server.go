@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 
@@ -39,6 +40,74 @@ func (s *shttp) Redirect(w http.ResponseWriter, r *http.Request, url string, cod
 func (s *shttp) Register(pattern string, fn http.HandlerFunc) {
 	amalgam.LOGGER.Debug("registering pattern", "pattern", pattern)
 	s.mux.HandleFunc(pattern, fn)
+}
+
+func (s *shttp) GetOrCreateTracker(
+	ctx context.Context, r *http.Request,
+) (string, error) {
+	var tracker string = ""
+	cookies := r.Cookies()
+	for i := 0; i < len(cookies); i++ {
+		cookie := cookies[i]
+		if cookie.Name == "trackerid" {
+			tracker = cookie.Value
+			break
+		}
+	}
+
+	if tracker != "" {
+		return tracker, nil
+	}
+
+	// This code should / will get executed only if the user is rBot.
+	api_key := r.URL.Query()["api_key"]
+	if len(api_key) == 0 {
+		return "", nil
+	}
+
+	user, err := s.GetUser(ctx)
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+
+	tr, err := amalgam.QueryIntoInt(
+		ctx,
+		`
+			SELECT 
+				id
+			FROM 
+				acko_tracker
+			WHERE
+				user_id = $1
+			LIMIT 1
+
+		`, user.ID(),
+	)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return "", errors.Trace(err)
+		}
+
+		tid, err := amalgam.QueryIntoInt(
+			ctx,
+			`
+				INSERT INTO 
+					acko_tracker(user_id, code_version, landing_page, initial_ip, is_mobile, is_app, device, os)
+				VALUES
+					($1, $2, $3, $4, $5, $6, $7)
+				RETURNING 
+					id
+				
+			`, user.ID(), "", "http://127.0.0.1", "", "127.0.0l.1", false, false, "api", "Ubuntu",
+		)
+		if err != nil {
+			return "", errors.Trace(err)
+		}
+
+		return amalgam.EncodeID(int64(tid), "acko_tracker"), nil
+	}
+
+	return amalgam.EncodeID(int64(tr), "acko_tracker"), nil
 }
 
 type EResult struct {

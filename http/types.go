@@ -16,4 +16,5 @@ type HTTPService interface {
 	ListenAndServe(string)
 	Redirect(w http.ResponseWriter, r *http.Request, url string, code int)
 	GetUser(ctx context.Context) (django.User, error)
+	GetOrCreateTracker(context.Context, *http.Request) (string, error)
 }

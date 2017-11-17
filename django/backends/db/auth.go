@@ -284,6 +284,25 @@ func (s *astore) UserByID(ctx context.Context, id int64) (django.User, error) {
 	return u, nil
 }
 
+func (s *astore) UserByAPIKey(
+	ctx context.Context, apiKey string,
+) (django.User, error) {
+	u := &user{}
+	query := "SELECT * FROM " + s.UserTable +
+		" WHERE id = (select user_id from acko_userprofile where api_key= $1)"
+
+	userMap, err := amalgam.QueryIntoMap(ctx, query, apiKey)
+	if err != nil {
+		return u, errors.Trace(err)
+	}
+
+	u.DID = userMap["id"].(int64)
+	u.DFields = userMap
+	u.store = s
+
+	return u, nil
+}
+
 func (s *astore) UserByPhone(
 	ctx context.Context, phone string,
 ) (django.User, error) {

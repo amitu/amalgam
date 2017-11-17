@@ -25,6 +25,7 @@ type User interface {
 
 type UserStore interface {
 	UserByID(context.Context, int64) (User, error)
+	UserByAPIKey(context.Context, string) (User, error)
 	UserByPhone(context.Context, string) (User, error)
 	UserByEmail(context.Context, string) (User, error)
 	Authenticate(context.Context, string, string) (User, error)
