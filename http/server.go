@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
@@ -84,7 +85,7 @@ func (s *shttp) GetOrCreateTracker(
 		`, user.ID(),
 	)
 	if err != nil {
-		if err != sql.ErrNoRows {
+		if err.Error() != sql.ErrNoRows.Error() {
 			return "", errors.Trace(err)
 		}
 
@@ -92,13 +93,16 @@ func (s *shttp) GetOrCreateTracker(
 			ctx,
 			`
 				INSERT INTO 
-					acko_tracker(user_id, code_version, landing_page, initial_ip, is_mobile, is_app, device, os)
+					acko_tracker(user_id, code_version, landing_page, 
+						initial_ip, is_mobile, is_app, device, os, created_on, 
+						browser, browser_version, referer)
 				VALUES
-					($1, $2, $3, $4, $5, $6, $7)
+					($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 				RETURNING 
 					id
 				
-			`, user.ID(), "", "http://127.0.0.1", "", "127.0.0l.1", false, false, "api", "Ubuntu",
+			`, user.ID(), "http://127.0.0.1", "", "127.0.0.1", false, false,
+			"api", "Ubuntu", time.Now(), "", "", "http://127.0.0.1",
 		)
 		if err != nil {
 			return "", errors.Trace(err)
