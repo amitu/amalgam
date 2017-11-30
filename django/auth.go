@@ -24,6 +24,7 @@ type User interface {
 }
 
 type UserStore interface {
+	GetOrCreateUser(context.Context, map[string]interface{}) (User, error)
 	UserByID(context.Context, int64) (User, error)
 	UserByAPIKey(context.Context, string) (User, error)
 	UserByPhone(context.Context, string) (User, error)

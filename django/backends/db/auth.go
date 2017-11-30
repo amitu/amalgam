@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
+	"database/sql"
 	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
 	"github.com/juju/errors"
+	"time"
 )
 
 type group struct {
@@ -313,6 +315,50 @@ func (s *astore) UserByPhone(
 	userMap, err := amalgam.QueryIntoMap(ctx, query, phone)
 	if err != nil {
 		return u, errors.Trace(err)
+	}
+
+	u.DID = userMap["id"].(int64)
+	u.DFields = userMap
+	u.store = s
+
+	return u, nil
+}
+
+func (s *astore) GetOrCreateUser(
+	ctx context.Context, details map[string]interface{},
+) (django.User, error) {
+	u := &user{}
+	query := "SELECT * FROM " + s.UserTable +
+		" WHERE phone = $1"
+
+	phone := details["phone"].(string)
+	first_name := details["first_name"].(string)
+	last_name := details["first_name"].(string)
+
+	userMap, err := amalgam.QueryIntoMap(ctx, query, phone)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			query := "INSERT INTO " +
+				s.UserTable + "(" + "phone, password, is_superuser, " +
+				"first_name, " + "last_name, is_staff, is_active, joined_on, " +
+				"available, idle, is_online, on_call) " + "VALUES " +
+				"($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
+
+			err := amalgam.Exec(
+				ctx, query, phone, "asd", false, first_name, last_name,
+				false, false, time.Now(), false, true, false, false,
+			)
+			if err != nil {
+				return nil, errors.Trace(err)
+			}
+
+			query = "SELECT * FROM " + s.UserTable +
+				" WHERE phone = $1"
+
+			userMap, err = amalgam.QueryIntoMap(ctx, query, phone)
+		} else {
+			return u, errors.Trace(err)
+		}
 	}
 
 	u.DID = userMap["id"].(int64)
