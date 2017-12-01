@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"crypto/rand"
 	"database/sql"
 	"github.com/amitu/amalgam"
 	"github.com/amitu/amalgam/django"
@@ -338,6 +339,12 @@ func (s *astore) GetOrCreateUser(
 	userMap, err := amalgam.QueryIntoMap(ctx, query, phone)
 	if err != nil {
 		if err.Error() == sql.ErrNoRows.Error() {
+			b := make([]byte, 8)
+			if _, err := rand.Read(b); err != nil {
+				panic(err)
+			}
+			password := fmt.Sprintf("%X", b)
+
 			query := "INSERT INTO " +
 				s.UserTable + "(" + "phone, password, is_superuser, " +
 				"first_name, " + "last_name, is_staff, is_active, joined_on, " +
@@ -345,7 +352,7 @@ func (s *astore) GetOrCreateUser(
 				"($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
 
 			err := amalgam.Exec(
-				ctx, query, phone, "asd", false, first_name, last_name,
+				ctx, query, phone, password, false, first_name, last_name,
 				false, false, time.Now(), false, true, false, false,
 			)
 			if err != nil {
