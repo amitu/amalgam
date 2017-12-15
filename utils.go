@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
+	"database/sql"
 	"database/sql/driver"
 	"encoding/base64"
 	"encoding/binary"
@@ -84,6 +85,14 @@ type AError struct {
 	Human   string      `json:"human"`
 	Code    string      `json:"code"`
 	Context interface{} `json:"context"`
+}
+
+func NullString(val *string) sql.NullString {
+	if val == nil {
+		return sql.NullString{Valid: false}
+	} else {
+		return sql.NullString{Valid: true, String: *val}
+	}
 }
 
 func GetIPFromRequest(r *http.Request) (string, error) {
