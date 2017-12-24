@@ -74,9 +74,9 @@ func (s *shttp) GetOrCreateTracker(
 	tr, err := amalgam.QueryIntoInt(
 		ctx,
 		`
-			SELECT 
+			SELECT
 				id
-			FROM 
+			FROM
 				acko_tracker
 			WHERE
 				user_id = $1
@@ -92,17 +92,18 @@ func (s *shttp) GetOrCreateTracker(
 		tid, err := amalgam.QueryIntoInt(
 			ctx,
 			`
-				INSERT INTO 
-					acko_tracker(user_id, code_version, landing_page, 
-						initial_ip, is_mobile, is_app, device, os, 
-						created_on, browser, browser_version, referer)
+				INSERT INTO
+					acko_tracker(user_id, code_version, landing_page,
+						initial_ip, is_mobile, is_app, device, os,
+						created_on, browser, browser_version, referer,
+						user_agent, updated_on)
 				VALUES
-					($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-				RETURNING 
+					($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+				RETURNING
 					id
-				
+
 			`, user.ID(), "", "http://127.0.0.1", "127.0.0.1", false, false,
-			"api", "Ubuntu", time.Now(), "", "", "",
+			"api", "Ubuntu", time.Now(), "", "", "", "", time.Now(),
 		)
 		if err != nil {
 			return "", errors.Trace(err)
