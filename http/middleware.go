@@ -83,7 +83,6 @@ type CodeWriter struct {
 }
 
 func (c *CodeWriter) WriteHeader(code int) {
-	amalgam.LOGGER.Info("INSIDE WRITE HEADER")
 	if code == 700 {
 		err := c.Tx.Rollback()
 		if err != nil {
