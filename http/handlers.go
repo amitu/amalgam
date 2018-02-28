@@ -24,7 +24,7 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 				amalgam.AError{Human: "Oops something went wrong"},
 			)
 
-			s.Reject(ctx, w, errMap)
+			s.Reject(w, errMap)
 		}
 		err := s.SetSession(ctx, key, value)
 		if err != nil {
@@ -36,10 +36,10 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 				amalgam.AError{Human: "Oops something went wrong"},
 			)
 
-			s.Reject(ctx, w, errMap)
+			s.Reject(w, errMap)
 			return
 		}
-		s.Respond(ctx, w, "ok")
+		s.Respond(w, "ok")
 		return
 	}
 
@@ -53,10 +53,10 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 				errMap["__all__"],
 				amalgam.AError{Human: "Oops something went wrong"},
 			)
-			s.Reject(ctx, w, errMap)
+			s.Reject(w, errMap)
 			return
 		}
-		s.Respond(ctx, w, user)
+		s.Respond(w, user)
 		return
 	}
 
@@ -69,11 +69,11 @@ func (s *shttp) sessionAPI(w http.ResponseWriter, r *http.Request) {
 			errMap["__all__"],
 			amalgam.AError{Human: "Oops something went wrong"},
 		)
-		s.Reject(ctx, w, errMap)
+		s.Reject(w, errMap)
 		return
 	}
 
-	s.Respond(ctx, w, v)
+	s.Respond(w, v)
 }
 
 func (s *shttp) testUploadPage(w http.ResponseWriter, _ *http.Request) {

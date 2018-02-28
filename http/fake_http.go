@@ -27,15 +27,11 @@ func (f *fhttp) Redirect(w http.ResponseWriter, r *http.Request, url string, cod
 	panic("not implemented")
 }
 
-func (f *fhttp) Reject(
-	ctx context.Context, w http.ResponseWriter, reason map[string][]amalgam.AError,
-) {
+func (f *fhttp) Reject(w http.ResponseWriter, reason map[string][]amalgam.AError) {
 	panic("not implemented")
 }
 
-func (f *fhttp) Respond(
-	ctx context.Context, w http.ResponseWriter, result interface{},
-) {
+func (f *fhttp) Respond(w http.ResponseWriter, result interface{}) {
 	panic("not implemented")
 }
 
