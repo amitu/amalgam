@@ -177,63 +177,34 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	errMap := map[string][]amalgam.AError{}
 
-	sessionid, err := r.Cookie("sessionid")
-	if err != nil {
-		if err == http.ErrNoCookie {
-			sid, err := s.sessions.CreateSession(ctx)
-			if err != nil {
-				logger.Crit(
-					"session_creation_error",
-					"err",
-					errors.ErrorStack(errors.Trace(err)),
-				)
-				errMap["__all__"] = append(
-					errMap["__all__"],
-					amalgam.AError{Human: "Oops something went wrong"},
-				)
-				s.Reject(w, errMap)
-				return
-			}
+	if amalgam.UseSession {
+		sessionid, err := r.Cookie("sessionid")
+		if err != nil {
+			if err == http.ErrNoCookie {
+				sid, err := s.sessions.CreateSession(ctx)
+				if err != nil {
+					logger.Crit(
+						"session_creation_error",
+						"err",
+						errors.ErrorStack(errors.Trace(err)),
+					)
+					errMap["__all__"] = append(
+						errMap["__all__"],
+						amalgam.AError{Human: "Oops something went wrong"},
+					)
+					s.Reject(ctx, w, errMap)
+					return
+				}
 
-			sessionid = &http.Cookie{
-				Name: "sessionid", Value: sid.SessionKey(), Path: "/",
+				sessionid = &http.Cookie{
+					Name: "sessionid", Value: sid.SessionKey(), Path: "/",
+				}
+				http.SetCookie(w, sessionid)
 			}
-			http.SetCookie(w, sessionid)
 		}
-	}
 
-	ctx = context.WithValue(ctx, amalgam.KeySession, sessionid.Value)
+		ctx = context.WithValue(ctx, amalgam.KeySession, sessionid.Value)
+	}
 	s.mux.ServeHTTP(w2, r.WithContext(ctx))
-
-	if w2.code < 400 {
-		err = tx.Commit()
-		if err != nil {
-			logger.Crit(
-				"failed_to_commit_transaction", "err", errors.ErrorStack(err),
-			)
-			errMap["__all__"] = append(
-				errMap["__all__"],
-				amalgam.AError{Human: "Oops something went wrong"},
-			)
-			m, _ := json.Marshal(errMap)
-			http.Error(w, string(m), 500)
-			return
-		}
-	} else {
-		err = tx.Rollback()
-		if err != nil {
-			logger.Crit(
-				"failed_to_rollback_transaction", "err", errors.ErrorStack(err),
-			)
-			errMap["__all__"] = append(
-				errMap["__all__"],
-				amalgam.AError{Human: "Oops something went wrong"},
-			)
-			m, _ := json.Marshal(errMap)
-			http.Error(w, string(m), 500)
-			return
-		}
-	}
-
 	logger.Debug("http_served")
 }
