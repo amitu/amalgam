@@ -122,11 +122,29 @@ type EResult struct {
 }
 
 func (s *shttp) Reject(
+	ctx context.Context,
 	w http.ResponseWriter,
 	reason map[string][]amalgam.AError,
 ) {
+	tx, err := amalgam.Ctx2Tx(ctx)
+	if err != nil {
+		panic("no_transaction_in_context")
+	}
+	err = tx.Rollback()
+	if err != nil {
+		errMap := map[string][]amalgam.AError{}
+		amalgam.LOGGER.Crit(
+			"failed_to_rollback_transaction", "err", errors.ErrorStack(err),
+		)
+		errMap["__all__"] = append(
+			errMap["__all__"],
+			amalgam.AError{Human: "Oops something went wrong"},
+		)
+		m, _ := json.Marshal(errMap)
+		http.Error(w, string(m), 500)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
 	j, err := json.Marshal(&EResult{Errors: reason, Success: false})
 	if err != nil {
 		amalgam.LOGGER.Error(
@@ -138,9 +156,30 @@ func (s *shttp) Reject(
 	http.Error(w, string(j), http.StatusOK)
 }
 
-func (s *shttp) Respond(w http.ResponseWriter, result interface{}) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+func (s *shttp) Respond(
+	ctx context.Context, w http.ResponseWriter, result interface{},
+) {
+	tx, err := amalgam.Ctx2Tx(ctx)
+	if err != nil {
+		panic("no_transaction_in_context")
+	}
 
+	err = tx.Commit()
+	if err != nil {
+		errMap := map[string][]amalgam.AError{}
+		amalgam.LOGGER.Crit(
+			"failed_to_commit_transaction", "err", errors.ErrorStack(err),
+		)
+		errMap["__all__"] = append(
+			errMap["__all__"],
+			amalgam.AError{Human: "Oops something went wrong"},
+		)
+		m, _ := json.Marshal(errMap)
+		http.Error(w, string(m), 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	j, err := json.Marshal(&EResult{Result: result, Success: true})
 	if err != nil {
 		amalgam.LOGGER.Error(

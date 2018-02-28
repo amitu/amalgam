@@ -13,20 +13,23 @@ import (
 )
 
 var (
-	Listen     = ":8000"
-	DbName     = ""
-	DbHost     = "127.0.0.1"
-	DbPort     = 5432
-	DbUser     = "user"
-	DbPass     = ""
-	Verbosity  = 4
-	Secret     = ""
-	Config     = ""
-	CreateConf = false
-	Debug      = true
-	Sentry     = ""
-
-	FLAGSET *flag.FlagSet = nil
+	Listen                       = ":8000"
+	DbName                       = ""
+	DbHost                       = "127.0.0.1"
+	DbPort                       = 5432
+	DbUser                       = "user"
+	DbPass                       = ""
+	Verbosity                    = 4
+	Secret                       = ""
+	Config                       = ""
+	CreateConf                   = false
+	Debug                        = true
+	Sentry                       = ""
+	UseSession                   = true
+	UseTransaction               = true
+	StatsD                       = ""
+	App                          = ""
+	FLAGSET        *flag.FlagSet = nil
 
 	Confs map[string]interface{}
 )
@@ -88,7 +91,16 @@ func init() {
 	StringFlag(&Secret, "secret", Secret, "django secret key")
 	BoolFlag(&CreateConf, "create-conf", CreateConf, "")
 	BoolFlag(&Debug, "debug", Debug, "")
+	BoolFlag(
+		&UseSession, "session",
+		UseSession, "Should sessions be a part of middleware",
+	)
+	BoolFlag(
+		&UseTransaction, "transaction",
+		UseTransaction, "Should transactions be handled",
+	)
 	StringFlag(&Sentry, "sentry", Sentry, "sentry endpoint")
+	StringFlag(&StatsD, "statsd", StatsD, "10.0.2.218:8126")
 }
 
 func Init() {
@@ -124,6 +136,7 @@ func Init() {
 	log.Println("config_parsed", "args", os.Args[1:], "flags", FLAGSET.Args())
 
 	raven.SetDSN(Sentry)
+	//statsdInit()
 
 }
 
