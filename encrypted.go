@@ -19,15 +19,10 @@ func EncodeID(id uint64, model string) string {
 	binary.LittleEndian.PutUint64(idBytes, id)
 	crc := crc32.ChecksumIEEE(idBytes) & 0xffffffff
 
-	message := make([]byte, 0)
-	mm := make([]byte, 4)
-	binary.LittleEndian.PutUint32(mm, crc)
-	message = append(message, mm...)
-
+	message := make([]byte, 4)
+	binary.LittleEndian.PutUint32(message, crc)
 	message = append(message, idBytes...)
-
-	mm = make([]byte, 4)
-	message = append(message, mm...)
+	message = append(message, make([]byte, 4)...)
 
 	block, err := aes.NewCipher([]byte(Secret[:32]))
 	if err != nil {
