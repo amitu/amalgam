@@ -15,18 +15,16 @@ import (
 )
 
 func EncodeID(id uint64, model string) string {
-	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, id)
-	crc := crc32.ChecksumIEEE(buf) & 0xffffffff
-	message := make([]byte, 0)
+	idBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(idBytes, id)
+	crc := crc32.ChecksumIEEE(idBytes) & 0xffffffff
 
+	message := make([]byte, 0)
 	mm := make([]byte, 4)
 	binary.LittleEndian.PutUint32(mm, crc)
 	message = append(message, mm...)
 
-	mm = make([]byte, 8)
-	binary.LittleEndian.PutUint64(mm, uint64(id))
-	message = append(message, mm...)
+	message = append(message, idBytes...)
 
 	mm = make([]byte, 4)
 	message = append(message, mm...)
