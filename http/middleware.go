@@ -13,7 +13,6 @@ import (
 	"github.com/amitu/amalgam/django"
 	"github.com/getsentry/raven-go"
 	"github.com/inconshreveable/log15"
-	"github.com/jmoiron/sqlx"
 	"github.com/juju/errors"
 )
 
@@ -76,52 +75,13 @@ func (s *shttp) GetUser(ctx context.Context) (django.User, error) {
 }
 
 type CodeWriter struct {
-	*sqlx.Tx
 	code int
-	bool
 	http.ResponseWriter
 }
 
 func (c *CodeWriter) WriteHeader(code int) {
-	if code == 700 {
-		err := c.Tx.Rollback()
-		if err != nil {
-			amalgam.LOGGER.Crit(
-				"failed_to_rollback_transaction", "err", errors.ErrorStack(err),
-			)
-		}
-	} else {
-		err := c.Tx.Commit()
-		if err != nil {
-			amalgam.LOGGER.Crit(
-				"failed_to_commit_transaction", "err", errors.ErrorStack(err),
-			)
-			c.bool = true
-			err := c.Tx.Rollback()
-			if err != nil {
-				amalgam.LOGGER.Crit(
-					"failed_to_rollback_transaction",
-					"err", errors.ErrorStack(err),
-				)
-			}
-		}
-	}
-	c.code = 200
+	c.code = code
 	c.ResponseWriter.WriteHeader(code)
-}
-
-func (c *CodeWriter) Write(resp []byte) (int, error) {
-	if c.bool {
-		errMap := map[string][]amalgam.AError{}
-		errMap["__all__"] = append(
-			errMap["__all__"],
-			amalgam.AError{Human: "Oops something went wrong"},
-		)
-		body, _ := json.Marshal(&EResult{Errors: errMap, Success: false})
-		return c.ResponseWriter.Write(body)
-	}
-
-	return c.ResponseWriter.Write(resp)
 }
 
 func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -129,6 +89,22 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if colon := strings.LastIndex(clientIP, ":"); colon != -1 {
 		clientIP = clientIP[:colon]
 	}
+
+	w2 := &CodeWriter{200, w}
+
+	start := time.Now()
+	logger := amalgam.LOGGER.New(
+		"url", r.RequestURI, "method", r.Method, "ip", clientIP,
+	)
+	logger.Debug("http_started")
+	logger = logger.New(
+		"time", log15.Lazy{func() interface{} {
+			return time.Since(start)
+		}},
+		"code", log15.Lazy{func() interface{} {
+			return w2.code
+		}},
+	)
 
 	db, err := amalgam.Ctx2Db(s.ctx)
 	if err != nil {
@@ -150,22 +126,6 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.WithValue(r.Context(), amalgam.KeyDBTransaction, tx)
 	ctx = context.WithValue(ctx, amalgam.KeyDB, db)
-
-	w2 := &CodeWriter{tx, 200, false, w}
-
-	start := time.Now()
-	logger := amalgam.LOGGER.New(
-		"url", r.RequestURI, "method", r.Method, "ip", clientIP,
-	)
-	logger.Debug("http_started")
-	logger = logger.New(
-		"time", log15.Lazy{func() interface{} {
-			return time.Since(start)
-		}},
-		"code", log15.Lazy{func() interface{} {
-			return w2.code
-		}},
-	)
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -217,35 +177,63 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	errMap := map[string][]amalgam.AError{}
 
-	if amalgam.UseSession {
-		sessionid, err := r.Cookie("sessionid")
-		if err != nil {
-			if err == http.ErrNoCookie {
-				sid, err := s.sessions.CreateSession(ctx)
-				if err != nil {
-					logger.Crit(
-						"session_creation_error",
-						"err",
-						errors.ErrorStack(errors.Trace(err)),
-					)
-					errMap["__all__"] = append(
-						errMap["__all__"],
-						amalgam.AError{Human: "Oops something went wrong"},
-					)
-					s.Reject(w, errMap)
-					return
-				}
-
-				sessionid = &http.Cookie{
-					Name: "sessionid", Value: sid.SessionKey(), Path: "/",
-				}
-				http.SetCookie(w, sessionid)
+	sessionid, err := r.Cookie("sessionid")
+	if err != nil {
+		if err == http.ErrNoCookie {
+			sid, err := s.sessions.CreateSession(ctx)
+			if err != nil {
+				logger.Crit(
+					"session_creation_error",
+					"err",
+					errors.ErrorStack(errors.Trace(err)),
+				)
+				errMap["__all__"] = append(
+					errMap["__all__"],
+					amalgam.AError{Human: "Oops something went wrong"},
+				)
+				s.Reject(w, errMap)
+				return
 			}
+
+			sessionid = &http.Cookie{
+				Name: "sessionid", Value: sid.SessionKey(), Path: "/",
+			}
+			http.SetCookie(w, sessionid)
 		}
-
-		ctx = context.WithValue(ctx, amalgam.KeySession, sessionid.Value)
-		s.mux.ServeHTTP(w2, r.WithContext(ctx))
-
-		logger.Debug("http_served")
 	}
+
+	ctx = context.WithValue(ctx, amalgam.KeySession, sessionid.Value)
+	s.mux.ServeHTTP(w2, r.WithContext(ctx))
+
+	if w2.code < 400 {
+		err = tx.Commit()
+		if err != nil {
+			logger.Crit(
+				"failed_to_commit_transaction", "err", errors.ErrorStack(err),
+			)
+			errMap["__all__"] = append(
+				errMap["__all__"],
+				amalgam.AError{Human: "Oops something went wrong"},
+			)
+			m, _ := json.Marshal(errMap)
+			http.Error(w, string(m), 500)
+			return
+		}
+	} else {
+		err = tx.Rollback()
+		if err != nil {
+			logger.Crit(
+				"failed_to_rollback_transaction", "err", errors.ErrorStack(err),
+			)
+			errMap["__all__"] = append(
+				errMap["__all__"],
+				amalgam.AError{Human: "Oops something went wrong"},
+			)
+			m, _ := json.Marshal(errMap)
+			http.Error(w, string(m), 500)
+			return
+		}
+	}
+
+	logger.Debug("http_served")
 }

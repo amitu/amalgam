@@ -135,8 +135,7 @@ func (s *shttp) Reject(
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	http.Error(w, string(j), 700)
+	http.Error(w, string(j), http.StatusOK)
 }
 
 func (s *shttp) Respond(w http.ResponseWriter, result interface{}) {
@@ -150,7 +149,5 @@ func (s *shttp) Respond(w http.ResponseWriter, result interface{}) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(200)
 	w.Write(j)
 }
