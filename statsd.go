@@ -12,6 +12,8 @@ var statsdConn net.Conn
 
 func statsdInit() {
 	var err error
+	fmt.Println("########")
+	fmt.Println(StatsD)
 	statsdConn, err = net.Dial("udp", StatsD)
 	if err != nil {
 		panic(err.Error())
@@ -31,11 +33,15 @@ func Gauge(name string, value int) error {
 }
 
 func Timer(name string, time time.Duration) error {
-	var msg = []byte(fmt.Sprintf("%s.%s.:%v|ms", App, name, time/1000))
+	fmt.Println("INSIDE TIMER")
+	var msg = []byte("statsd.r2d2_event:100|ms")
 	count, err := statsdConn.Write(msg)
 	if err != nil {
+		panic("Asdas")
 		return err
 	}
+	fmt.Println("@@@@@@@@@")
+	fmt.Println(count)
 	if count != len(msg) {
 		return errors.New("")
 	}
