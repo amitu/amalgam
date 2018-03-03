@@ -27,7 +27,7 @@ var (
 	Sentry                       = ""
 	UseSession                   = true
 	UseTransaction               = true
-	StatsD                       = ""
+	StatsD                       = "10.0.2.218:8126"
 	App                          = ""
 	FLAGSET        *flag.FlagSet = nil
 
@@ -100,7 +100,7 @@ func init() {
 		UseTransaction, "Should transactions be handled",
 	)
 	StringFlag(&Sentry, "sentry", Sentry, "sentry endpoint")
-	StringFlag(&StatsD, "statsd", StatsD, "10.0.2.218:8126")
+	StringFlag(&StatsD, "statsd", StatsD, "statsD endpoint")
 }
 
 func Init() {
@@ -136,7 +136,7 @@ func Init() {
 	log.Println("config_parsed", "args", os.Args[1:], "flags", FLAGSET.Args())
 
 	raven.SetDSN(Sentry)
-	//statsdInit()
+	statsdInit()
 
 }
 
