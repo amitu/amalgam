@@ -77,13 +77,13 @@ func (s *shttp) GetUser(ctx context.Context) (django.User, error) {
 
 type CodeWriter struct {
 	*sqlx.Tx
-	code int
-	bool
+	code     int
+	hasError bool
 	http.ResponseWriter
 }
 
 func (c *CodeWriter) WriteHeader(code int) {
-	if code == 700 {
+	if code > 399 {
 		err := c.Tx.Rollback()
 		if err != nil {
 			amalgam.LOGGER.Crit(
@@ -96,7 +96,7 @@ func (c *CodeWriter) WriteHeader(code int) {
 			amalgam.LOGGER.Crit(
 				"failed_to_commit_transaction", "err", errors.ErrorStack(err),
 			)
-			c.bool = true
+			c.hasError = true
 			err := c.Tx.Rollback()
 			if err != nil {
 				amalgam.LOGGER.Crit(
@@ -111,7 +111,7 @@ func (c *CodeWriter) WriteHeader(code int) {
 }
 
 func (c *CodeWriter) Write(resp []byte) (int, error) {
-	if c.bool {
+	if c.hasError {
 		errMap := map[string][]amalgam.AError{}
 		errMap["__all__"] = append(
 			errMap["__all__"],
