@@ -27,8 +27,8 @@ var (
 	Sentry                       = ""
 	UseSession                   = true
 	UseTransaction               = true
-	StatsD                       = "10.0.2.218:8126"
-	App                          = ""
+	StatsD                       = ""
+	App                          = "acko"
 	FLAGSET        *flag.FlagSet = nil
 
 	Confs map[string]interface{}
@@ -101,6 +101,7 @@ func init() {
 	)
 	StringFlag(&Sentry, "sentry", Sentry, "sentry endpoint")
 	StringFlag(&StatsD, "statsd", StatsD, "statsD endpoint")
+	StringFlag(&App, "app", App, "the app in use")
 }
 
 func Init() {
