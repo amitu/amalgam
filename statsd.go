@@ -30,8 +30,9 @@ func Gauge(name string, value int) error {
 	return nil
 }
 
-func Timer(name string, time time.Duration) error {
-	var msg = []byte(fmt.Sprintf("%s.%s.:%v|ms", App, name, time/1000))
+func Timer(name string, tt time.Duration) error {
+	vt := float64(tt) / 1000000
+	var msg = []byte(fmt.Sprintf("%s.%s.:%v|ms", App, name, vt))
 	count, err := statsdConn.Write(msg)
 	if err != nil {
 		return err
