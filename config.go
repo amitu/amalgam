@@ -137,7 +137,9 @@ func Init() {
 	log.Println("config_parsed", "args", os.Args[1:], "flags", FLAGSET.Args())
 
 	raven.SetDSN(Sentry)
-	statsdInit()
+	if StatsD != "" {
+		statsdInit()
+	}
 
 }
 

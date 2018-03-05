@@ -31,14 +31,16 @@ func Gauge(name string, value int) error {
 }
 
 func Timer(name string, tt time.Duration) error {
-	vt := float64(tt) / 1000000
-	var msg = []byte(fmt.Sprintf("%s.%s.:%v|ms", App, name, vt))
-	count, err := statsdConn.Write(msg)
-	if err != nil {
-		return err
-	}
-	if count != len(msg) {
-		return errors.New("")
+	if StatsD != "" {
+		vt := float64(tt) / 1000000
+		var msg = []byte(fmt.Sprintf("%s.%s.:%v|ms", App, name, vt))
+		count, err := statsdConn.Write(msg)
+		if err != nil {
+			return err
+		}
+		if count != len(msg) {
+			return errors.New("")
+		}
 	}
 	return nil
 }
