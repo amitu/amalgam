@@ -27,8 +27,8 @@ var (
 	Sentry                       = ""
 	UseSession                   = true
 	UseTransaction               = true
-	StatsD                       = "10.0.2.218:8126"
-	App                          = ""
+	StatsD                       = ""
+	App                          = "acko"
 	FLAGSET        *flag.FlagSet = nil
 
 	Confs map[string]interface{}
