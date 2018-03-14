@@ -192,7 +192,7 @@ func (s *shttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			)
 
 			res := &EResult{Errors: errMap, Success: false}
-			m, err := json.Marshal(res)
+			m, _ := json.Marshal(res)
 			http.Error(w, string(m), 500)
 
 			if (!amalgam.Debug) && (amalgam.Sentry) != "" {
